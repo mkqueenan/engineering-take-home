@@ -3,12 +3,10 @@ package com.kevinqueenan.sentencesearch.controller;
 import com.kevinqueenan.sentencesearch.service.IndexTraverser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 
 @Slf4j

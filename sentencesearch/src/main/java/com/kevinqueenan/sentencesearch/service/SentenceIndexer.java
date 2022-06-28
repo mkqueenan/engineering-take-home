@@ -28,12 +28,14 @@ public class SentenceIndexer {
 
     private final String inputDirectory;
     private final String indexDirectory;
+    private final Boolean indexClearOnStart;
 
-    public SentenceIndexer(@Value("${input.directory}") final String inputDirectory, @Value("${index.directory}") final String indexDirectory) throws IOException {
+    public SentenceIndexer(@Value("${input.directory}") final String inputDirectory, @Value("${index.directory}") final String indexDirectory, @Value("{index.clear.on.start}") final Boolean indexClearOnStart) throws IOException {
         this.inputDirectory = inputDirectory;
         this.indexDirectory = indexDirectory;
+        this.indexClearOnStart = indexClearOnStart;
         ArrayList<Document> documents = this.generateDocumentsFromSentences();
-        this.createIndexFromDocuments(documents);
+        this.createIndexFromDocuments(this.indexClearOnStart, documents);
     }
 
     private ArrayList<Document> generateDocumentsFromSentences() {
@@ -57,11 +59,13 @@ public class SentenceIndexer {
         return documentsToBeIndexed;
     }
 
-    private void createIndexFromDocuments(ArrayList<Document> documents) throws IOException {
+    private void createIndexFromDocuments(Boolean indexClearOnStart,ArrayList<Document> documents) throws IOException {
         StandardAnalyzer standardAnalyzer = new StandardAnalyzer();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(standardAnalyzer);
+        if (indexClearOnStart) {
+            indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+        }
         try (Directory index = FSDirectory.open(Path.of(this.indexDirectory)); IndexWriter indexWriter = new IndexWriter(index, indexWriterConfig)) {
-            indexWriter.deleteAll();
             indexWriter.addDocuments(documents);
         } catch (IOException e) {
             throw new RuntimeException(e);
