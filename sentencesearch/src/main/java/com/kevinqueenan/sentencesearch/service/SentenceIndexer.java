@@ -1,7 +1,7 @@
 package com.kevinqueenan.sentencesearch.service;
 
+import com.kevinqueenan.sentencesearch.model.VectorTextField;
 import com.kevinqueenan.sentencesearch.utility.TextFileFilter;
-import com.kevinqueenan.sentencesearch.utility.VectorTextField;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -13,10 +13,12 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -26,52 +28,66 @@ import java.util.Arrays;
 @Service
 public class SentenceIndexer {
 
-    private final String inputDirectory;
-    private final String indexDirectory;
-    private final Boolean indexClearOnStart;
+  private final String inputDirectory;
+  private final String indexDirectory;
+  private final Boolean indexClearOnStart;
 
-    public SentenceIndexer(@Value("${input.directory}") final String inputDirectory, @Value("${index.directory}") final String indexDirectory, @Value("${index.clear.on.start}") final Boolean indexClearOnStart) throws IOException {
-        this.inputDirectory = inputDirectory;
-        this.indexDirectory = indexDirectory;
-        this.indexClearOnStart = indexClearOnStart;
-        ArrayList<Document> documents = this.generateDocumentsFromSentences();
-        this.createIndexFromDocuments(documents);
-    }
+  public SentenceIndexer(
+      @Value("${input.directory}") final String inputDirectory,
+      @Value("${index.directory}") final String indexDirectory,
+      @Value("${index.clear.on.start}") final Boolean indexClearOnStart)
+      throws IOException {
+    this.inputDirectory = inputDirectory;
+    this.indexDirectory = indexDirectory;
+    this.indexClearOnStart = indexClearOnStart;
+    ArrayList<Document> documents = this.generateDocumentsFromSentences();
+    this.createIndexFromDocuments(documents);
+  }
 
-    private ArrayList<Document> generateDocumentsFromSentences() {
-        ArrayList<Document> documentsToBeIndexed = new ArrayList<>();
-        File inputDirectory = new File(this.inputDirectory);
-        ArrayList<File> inputTextFiles = new ArrayList<>(Arrays.asList(inputDirectory.listFiles(new TextFileFilter())));
-        inputTextFiles.forEach(textFile -> {
-            try (BufferedReader reader = new BufferedReader(new FileReader(textFile))) {
-                reader.lines().forEach(sentence -> {
-                    String sentenceWithoutPunctuation = sentence.toLowerCase().replaceAll("\\p{Punct}", "");
-                    String normalizedSentence = Normalizer.normalize(sentenceWithoutPunctuation, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
-                    Document document = new Document();
-                    document.add(new VectorTextField("normalizedText", normalizedSentence, TextField.TYPE_NOT_STORED));
-                    document.add(new Field("originalSentence", sentence, StoredField.TYPE));
-                    documentsToBeIndexed.add(document);
-                });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        return documentsToBeIndexed;
-    }
-
-    private void createIndexFromDocuments(ArrayList<Document> documents) {
-        StandardAnalyzer standardAnalyzer = new StandardAnalyzer();
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(standardAnalyzer);
-        if (this.indexClearOnStart) {
-            indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        } else {
-            indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-        }
-        try (Directory index = FSDirectory.open(Path.of(this.indexDirectory)); IndexWriter indexWriter = new IndexWriter(index, indexWriterConfig)) {
-            indexWriter.addDocuments(documents);
-        } catch (IOException e) {
+  private ArrayList<Document> generateDocumentsFromSentences() {
+    ArrayList<Document> documentsToBeIndexed = new ArrayList<>();
+    File inputDirectory = new File(this.inputDirectory);
+    ArrayList<File> inputTextFiles =
+        new ArrayList<>(Arrays.asList(inputDirectory.listFiles(new TextFileFilter())));
+    inputTextFiles.forEach(
+        textFile -> {
+          try (BufferedReader reader = new BufferedReader(new FileReader(textFile))) {
+            reader
+                .lines()
+                .forEach(
+                    sentence -> {
+                      String sentenceWithoutPunctuation =
+                          sentence.toLowerCase().replaceAll("\\p{Punct}", "");
+                      String normalizedSentence =
+                          Normalizer.normalize(sentenceWithoutPunctuation, Normalizer.Form.NFD)
+                              .replaceAll("[^\\p{ASCII}]", "");
+                      Document document = new Document();
+                      document.add(
+                          new VectorTextField(
+                              "normalizedText", normalizedSentence, TextField.TYPE_NOT_STORED));
+                      document.add(new Field("originalSentence", sentence, StoredField.TYPE));
+                      documentsToBeIndexed.add(document);
+                    });
+          } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
+          }
+        });
+    return documentsToBeIndexed;
+  }
 
+  private void createIndexFromDocuments(ArrayList<Document> documents) {
+    StandardAnalyzer standardAnalyzer = new StandardAnalyzer();
+    IndexWriterConfig indexWriterConfig = new IndexWriterConfig(standardAnalyzer);
+    if (this.indexClearOnStart) {
+      indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+    } else {
+      indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
+    }
+    try (Directory index = FSDirectory.open(Path.of(this.indexDirectory));
+        IndexWriter indexWriter = new IndexWriter(index, indexWriterConfig)) {
+      indexWriter.addDocuments(documents);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }
