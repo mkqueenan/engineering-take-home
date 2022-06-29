@@ -30,12 +30,12 @@ public class SentenceIndexer {
     private final String indexDirectory;
     private final Boolean indexClearOnStart;
 
-    public SentenceIndexer(@Value("${input.directory}") final String inputDirectory, @Value("${index.directory}") final String indexDirectory, @Value("{index.clear.on.start}") final Boolean indexClearOnStart) throws IOException {
+    public SentenceIndexer(@Value("${input.directory}") final String inputDirectory, @Value("${index.directory}") final String indexDirectory, @Value("${index.clear.on.start}") final Boolean indexClearOnStart) throws IOException {
         this.inputDirectory = inputDirectory;
         this.indexDirectory = indexDirectory;
         this.indexClearOnStart = indexClearOnStart;
         ArrayList<Document> documents = this.generateDocumentsFromSentences();
-        this.createIndexFromDocuments(this.indexClearOnStart, documents);
+        this.createIndexFromDocuments(documents);
     }
 
     private ArrayList<Document> generateDocumentsFromSentences() {
@@ -59,11 +59,13 @@ public class SentenceIndexer {
         return documentsToBeIndexed;
     }
 
-    private void createIndexFromDocuments(Boolean indexClearOnStart,ArrayList<Document> documents) throws IOException {
+    private void createIndexFromDocuments(ArrayList<Document> documents) {
         StandardAnalyzer standardAnalyzer = new StandardAnalyzer();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(standardAnalyzer);
-        if (indexClearOnStart) {
+        if (this.indexClearOnStart) {
             indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+        } else {
+            indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
         }
         try (Directory index = FSDirectory.open(Path.of(this.indexDirectory)); IndexWriter indexWriter = new IndexWriter(index, indexWriterConfig)) {
             indexWriter.addDocuments(documents);

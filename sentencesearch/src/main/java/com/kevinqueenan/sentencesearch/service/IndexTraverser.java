@@ -14,26 +14,28 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
 public class IndexTraverser {
 
     private final String indexDirectory;
+    private final Integer maxHitsPerQuery;
 
-    public IndexTraverser(@Value("${index.directory}") final String indexDirectory) {
+    public IndexTraverser(@Value("${index.directory}") final String indexDirectory, @Value("${max.hits.per.query}") final Integer maxHitsPerQuery) {
         this.indexDirectory = indexDirectory;
+        this.maxHitsPerQuery = maxHitsPerQuery;
     }
 
-    public HashMap<String, Integer> getSearchTermFrequency (final String searchTerm) throws ParseException {
-        HashMap<String, Integer> searchTermResults = new HashMap<>();
+    public Map<String, Integer> getSearchTermFrequency (final String searchTerm) throws ParseException {
+        Map<String, Integer> searchTermResults = new LinkedHashMap<>();
         StandardAnalyzer analyzer = new StandardAnalyzer();
         Query query = new QueryParser("normalizedText", analyzer).parse(searchTerm);
         try (Directory index = FSDirectory.open(Path.of(this.indexDirectory)); IndexReader indexReader = DirectoryReader.open(index)) {
             IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-            TopDocs topDocs = indexSearcher.search(query, 1000);
+            TopDocs topDocs = indexSearcher.search(query, this.maxHitsPerQuery);
             ScoreDoc[] documentHits = topDocs.scoreDocs;
             for (int i = 0; i < documentHits.length; ++i) {
                 int documentId = documentHits[i].doc;
