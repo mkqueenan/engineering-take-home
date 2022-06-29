@@ -20,17 +20,14 @@ public class QueryController {
 
   @RequestMapping(value = "/count", method = RequestMethod.GET)
   @ResponseBody
-  public QueryResponse getSearchTermFrequency(
-      @RequestParam(name = "word") String searchTerm) throws ParseException {
+  public QueryResponse getSearchTermFrequency(@RequestParam(name = "word") String searchTerm)
+      throws ParseException {
     if (searchTerm == null || searchTerm.isEmpty() || searchTerm.isBlank()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "Search term cannot be null, empty, or blank. Please provide a valid word in your request.");
     } else {
-      return QueryResponse.builder()
-          .searchTerm(searchTerm)
-          .searchTermFrequency(this.indexTraverser.getSearchTermFrequency(searchTerm))
-          .build();
+      return new QueryResponse(searchTerm, this.indexTraverser.getSearchTermFrequency(searchTerm));
     }
   }
 }

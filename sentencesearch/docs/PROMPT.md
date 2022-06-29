@@ -37,10 +37,16 @@ For example, though we do not expect formatted/indented output.
 
 ```json
 {
-  "word": "eggplant", 
+  "word": "eggplant",
   "sentences": [
-    {"sentence": "Eggplant or not eggplant?", "count": 2}
-    {"sentence": "Many people don't like eggplant.", "count": 1}
+    {
+      "sentence": "Eggplant or not eggplant?",
+      "count": 2
+    }
+    {
+      "sentence": "Many people don't like eggplant.",
+      "count": 1
+    }
   ]
 }
 ```
