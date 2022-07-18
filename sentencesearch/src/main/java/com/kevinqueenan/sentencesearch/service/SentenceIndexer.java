@@ -2,6 +2,7 @@ package com.kevinqueenan.sentencesearch.service;
 
 import com.kevinqueenan.sentencesearch.model.VectorTextField;
 import com.kevinqueenan.sentencesearch.utility.TextFileFilter;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -20,35 +21,51 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
+
+import static com.kevinqueenan.sentencesearch.utility.StringSanitizer.convertToLowerAndRemovePunctuationFromText;
+import static com.kevinqueenan.sentencesearch.utility.StringSanitizer.normalizeText;
 
 @Slf4j
 @Service
+@Getter
 public class SentenceIndexer {
 
   private final String inputDirectory;
+
   private final String indexDirectory;
+
   private final Boolean indexClearOnStart;
+
+  private final String queryFieldName;
+
+  private final String resultFieldName;
+
+  private final ArrayList<Document> documents;
 
   public SentenceIndexer(
       @Value("${input.directory}") final String inputDirectory,
       @Value("${index.directory}") final String indexDirectory,
-      @Value("${index.clear.on.start}") final Boolean indexClearOnStart)
-      throws IOException {
+      @Value("${index.clear.on.start}") final Boolean indexClearOnStart,
+      @Value("${query.field.name}") final String queryFieldName,
+      @Value("${result.field.name}") final String resultFieldName) {
     this.inputDirectory = inputDirectory;
     this.indexDirectory = indexDirectory;
     this.indexClearOnStart = indexClearOnStart;
-    ArrayList<Document> documents = this.generateDocumentsFromSentences();
-    this.createIndexFromDocuments(documents);
+    this.queryFieldName = queryFieldName;
+    this.resultFieldName = resultFieldName;
+    this.documents = this.generateDocumentsFromSentences();
+    this.createIndexFromDocuments(this.documents);
   }
 
-  private ArrayList<Document> generateDocumentsFromSentences() {
+  public ArrayList<Document> generateDocumentsFromSentences() {
     ArrayList<Document> documentsToBeIndexed = new ArrayList<>();
     File inputDirectory = new File(this.inputDirectory);
     ArrayList<File> inputTextFiles =
-        new ArrayList<>(Arrays.asList(inputDirectory.listFiles(new TextFileFilter())));
+        new ArrayList<>(
+            Arrays.asList(Objects.requireNonNull(inputDirectory.listFiles(new TextFileFilter()))));
     inputTextFiles.forEach(
         textFile -> {
           try (BufferedReader reader = new BufferedReader(new FileReader(textFile))) {
@@ -57,15 +74,13 @@ public class SentenceIndexer {
                 .forEach(
                     sentence -> {
                       String sentenceWithoutPunctuation =
-                          sentence.toLowerCase().replaceAll("\\p{Punct}", "");
-                      String normalizedSentence =
-                          Normalizer.normalize(sentenceWithoutPunctuation, Normalizer.Form.NFD)
-                              .replaceAll("[^\\p{ASCII}]", "");
+                          convertToLowerAndRemovePunctuationFromText(sentence);
+                      String normalizedSentence = normalizeText(sentenceWithoutPunctuation);
                       Document document = new Document();
                       document.add(
                           new VectorTextField(
-                              "normalizedText", normalizedSentence, TextField.TYPE_NOT_STORED));
-                      document.add(new Field("originalSentence", sentence, StoredField.TYPE));
+                              this.queryFieldName, normalizedSentence, TextField.TYPE_NOT_STORED));
+                      document.add(new Field(this.resultFieldName, sentence, StoredField.TYPE));
                       documentsToBeIndexed.add(document);
                     });
           } catch (IOException e) {

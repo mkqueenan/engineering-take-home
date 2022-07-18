@@ -25,7 +25,7 @@ public class QueryController {
     if (searchTerm == null || searchTerm.isEmpty() || searchTerm.isBlank()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
-          "Search term cannot be null, empty, or blank. Please provide a valid word in your request.");
+          "Search term cannot be null, empty, or blank. Please provide a valid string in your request.");
     } else {
       return new QueryResponse(searchTerm, this.indexTraverser.getSearchTermFrequency(searchTerm));
     }
